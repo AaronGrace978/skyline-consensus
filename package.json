@@ -1,0 +1,27 @@
+{
+  "name": "skyline-consensus",
+  "version": "1.0.0",
+  "description": "Multi-agent AI that negotiates fair eVTOL flight paths for Boston — HTCJ × PROOF Aviation Futures Challenge",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node server.js",
+    "simulate": "node backend/cli.js",
+    "test": "node backend/test.js"
+  },
+  "keywords": [
+    "evtol",
+    "advanced-air-mobility",
+    "multi-agent-systems",
+    "nash-bargaining",
+    "environmental-justice",
+    "boston",
+    "aviation-futures"
+  ],
+  "author": "Skyline Consensus Team",
+  "license": "MIT",
+  "dependencies": {
+    "cors": "^2.8.5",
+    "express": "^4.21.2"
+  }
+}
