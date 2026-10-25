@@ -1,0 +1,507 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Skyline Consensus — Multi-Agent eVTOL Flight Path Negotiation for Boston</title>
+  <link
+    rel="stylesheet"
+    href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+    integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY="
+    crossorigin=""
+  />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link
+    href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600;700&display=swap"
+    rel="stylesheet"
+  />
+  <link rel="stylesheet" href="/styles.css" />
+</head>
+<body>
+  <div class="app-shell">
+    <!-- Top Mission Control Bar -->
+    <header class="topbar">
+      <div class="brand-cluster">
+        <div class="brand-logo" aria-hidden="true">
+          <svg width="28" height="28" viewBox="0 0 32 32" fill="none">
+            <circle cx="16" cy="16" r="14" stroke="#10b981" stroke-width="2" stroke-dasharray="4 2" />
+            <path d="M7 20L16 8L25 20L16 16.5L7 20Z" fill="#10b981" />
+            <circle cx="16" cy="16" r="3" fill="#38bdf8" />
+          </svg>
+        </div>
+        <div>
+          <div class="brand-title-row">
+            <h1 class="brand-title">SKYLINE CONSENSUS</h1>
+            <span class="challenge-badge">HTCJ × PROOF Aviation Futures</span>
+          </div>
+          <p class="brand-tagline">
+            Don't pitch the future. <strong>Prove it's fair.</strong> — Boston Multi-Agent eVTOL Airspace Protocol
+          </p>
+        </div>
+      </div>
+
+      <div class="mission-controls">
+        <div class="control-group">
+          <label for="scenario-select">Boston Corridor Preset</label>
+          <select id="scenario-select" class="control-select"></select>
+        </div>
+
+        <div class="control-group compact">
+          <label for="origin-select">Origin</label>
+          <select id="origin-select" class="control-select"></select>
+        </div>
+
+        <div class="control-group compact">
+          <label for="dest-select">Destination</label>
+          <select id="dest-select" class="control-select"></select>
+        </div>
+
+        <div class="control-group compact">
+          <label for="time-select">Time / Curfew</label>
+          <select id="time-select" class="control-select">
+            <option value="day">Daytime Peak (55 dBA EJ Cap)</option>
+            <option value="evening">Evening Shoulder</option>
+            <option value="night">Night Curfew (48 dBA Cap)</option>
+          </select>
+        </div>
+
+        <div class="control-group compact">
+          <label for="weather-select">Weather</label>
+          <select id="weather-select" class="control-select">
+            <option value="clear">Clear VFR</option>
+            <option value="windy">24kt NW Crosswinds</option>
+            <option value="fog">Harbor Fog / Marginal</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="action-buttons">
+        <button id="btn-run-live" class="btn btn-primary" title="Replay round-by-round multi-agent negotiation">
+          <span class="btn-icon">▶</span> Run Live Negotiation
+        </button>
+        <button id="btn-step-round" class="btn btn-secondary" title="Step forward one negotiation round">
+          ⏭ Step Round
+        </button>
+        <button id="btn-add-zone" class="btn btn-accent" title="Click on the Boston map to drop a citizen quiet zone and force real-time re-negotiation">
+          📍 + Drop Quiet Zone
+        </button>
+        <button id="btn-view-proof" class="btn btn-outline" title="Inspect signed SHA-256 Auditable Consensus Certificate">
+          📜 Audit Proof
+        </button>
+      </div>
+    </header>
+
+    <!-- Main 3-Column Mission Control Grid -->
+    <main class="workspace-grid">
+      <!-- LEFT COLUMN: Consensus Score, Agent Utility Cards & Weight Tuning -->
+      <aside class="panel left-panel">
+        <!-- Consensus & Fairness Score Hero Card -->
+        <section class="consensus-hero-card">
+          <div class="hero-card-header">
+            <span class="section-eyebrow">AUDITABLE EQUILIBRIUM METRIC</span>
+            <span id="consensus-status-pill" class="status-pill status-certified">CONSENSUS CERTIFIED</span>
+          </div>
+
+          <div class="score-dial-row">
+            <div class="score-ring-wrapper">
+              <svg class="score-ring" viewBox="0 0 120 120">
+                <circle class="score-ring-bg" cx="60" cy="60" r="50" />
+                <circle id="score-ring-fill" class="score-ring-fill" cx="60" cy="60" r="50" stroke-dasharray="314.16" stroke-dashoffset="30" />
+              </svg>
+              <div class="score-ring-center">
+                <span id="consensus-score-value" class="score-number">93</span>
+                <span class="score-max">/ 100</span>
+              </div>
+            </div>
+
+            <div class="fairness-submetrics">
+              <div class="submetric-item">
+                <span class="submetric-label">Jain's Fairness Index</span>
+                <div class="submetric-val-row">
+                  <strong id="jains-index-value" class="submetric-value mono">1.0000</strong>
+                  <span id="jains-delta-badge" class="delta-badge positive">+0.180</span>
+                </div>
+              </div>
+              <div class="submetric-item">
+                <span class="submetric-label">Nash Bargaining Product</span>
+                <div class="submetric-val-row">
+                  <strong id="nash-index-value" class="submetric-value mono">62.4</strong>
+                  <span class="delta-badge neutral">Pareto-Optimal</span>
+                </div>
+              </div>
+              <div class="submetric-item">
+                <span class="submetric-label">Peak Community Noise</span>
+                <div class="submetric-val-row">
+                  <strong id="peak-dba-value" class="submetric-value mono">48.5 dBA</strong>
+                  <span id="peak-dba-delta" class="delta-badge positive">-15.9 dB</span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="baseline-vs-consensus-strip">
+            <div class="strip-col">
+              <span class="strip-label">R1 Direct Baseline</span>
+              <span id="strip-r1-score" class="strip-val danger mono">14/100 (Vetoed)</span>
+            </div>
+            <div class="strip-arrow">→</div>
+            <div class="strip-col">
+              <span class="strip-label">R4 Skyline Consensus</span>
+              <span id="strip-r4-score" class="strip-val success mono">93/100 (Cleared)</span>
+            </div>
+          </div>
+        </section>
+
+        <!-- Three Negotiating Agent Cards -->
+        <section class="agents-section">
+          <div class="section-header-row">
+            <h2 class="section-title">Negotiating Agents (3)</h2>
+            <span id="active-round-indicator" class="round-tag mono">ROUND 5 / 5</span>
+          </div>
+
+          <!-- Community Agent -->
+          <div class="agent-card agent-community" id="card-agent-community">
+            <div class="agent-card-top">
+              <div class="agent-id-group">
+                <span class="agent-dot community-dot"></span>
+                <div>
+                  <h3 class="agent-name">Community Agent</h3>
+                  <span class="agent-role">Noise &amp; Environmental Justice Advocate</span>
+                </div>
+              </div>
+              <div class="agent-score-box">
+                <span id="util-community" class="agent-util-num mono">98</span>
+                <span class="agent-util-unit">/100</span>
+              </div>
+            </div>
+            <div class="progress-track">
+              <div id="bar-community" class="progress-fill fill-community" style="width: 98%"></div>
+            </div>
+            <div class="agent-kpis">
+              <div class="kpi-pill">
+                <span>EJ Violations</span>
+                <strong id="kpi-comm-ej" class="mono">0 Tracts</strong>
+              </div>
+              <div class="kpi-pill">
+                <span>EJ Protected</span>
+                <strong id="kpi-comm-pop" class="mono">53,182 res.</strong>
+              </div>
+              <div class="kpi-pill">
+                <span>Stance</span>
+                <strong id="kpi-comm-stance" class="stance-text">RATIFIED</strong>
+              </div>
+            </div>
+          </div>
+
+          <!-- Operator Agent -->
+          <div class="agent-card agent-operator" id="card-agent-operator">
+            <div class="agent-card-top">
+              <div class="agent-id-group">
+                <span class="agent-dot operator-dot"></span>
+                <div>
+                  <h3 class="agent-name">Operator Agent</h3>
+                  <span class="agent-role">eVTOL Fleet Energy &amp; Schedule Optimizer</span>
+                </div>
+              </div>
+              <div class="agent-score-box">
+                <span id="util-operator" class="agent-util-num mono">77</span>
+                <span class="agent-util-unit">/100</span>
+              </div>
+            </div>
+            <div class="progress-track">
+              <div id="bar-operator" class="progress-fill fill-operator" style="width: 77%"></div>
+            </div>
+            <div class="agent-kpis">
+              <div class="kpi-pill">
+                <span>Flight Time</span>
+                <strong id="kpi-oper-time" class="mono">3.48 min</strong>
+              </div>
+              <div class="kpi-pill">
+                <span>Energy Draw</span>
+                <strong id="kpi-oper-energy" class="mono">19.5 kWh</strong>
+              </div>
+              <div class="kpi-pill">
+                <span>Detour</span>
+                <strong id="kpi-oper-detour" class="mono">1.16x</strong>
+              </div>
+            </div>
+          </div>
+
+          <!-- City Agent -->
+          <div class="agent-card agent-city" id="card-agent-city">
+            <div class="agent-card-top">
+              <div class="agent-id-group">
+                <span class="agent-dot city-dot"></span>
+                <div>
+                  <h3 class="agent-name">City &amp; FAA Agent</h3>
+                  <span class="agent-role">Boston Safety &amp; Class B Airspace Regulator</span>
+                </div>
+              </div>
+              <div class="agent-score-box">
+                <span id="util-city" class="agent-util-num mono">98</span>
+                <span class="agent-util-unit">/100</span>
+              </div>
+            </div>
+            <div class="progress-track">
+              <div id="bar-city" class="progress-fill fill-city" style="width: 98%"></div>
+            </div>
+            <div class="agent-kpis">
+              <div class="kpi-pill">
+                <span>FAA Conflicts</span>
+                <strong id="kpi-city-faa" class="mono">0 Clear</strong>
+              </div>
+              <div class="kpi-pill">
+                <span>Flyway Align</span>
+                <strong id="kpi-city-flyway" class="mono">100%</strong>
+              </div>
+              <div class="kpi-pill">
+                <span>Max Alt</span>
+                <strong id="kpi-city-alt" class="mono">1,514 ft</strong>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- Agent Bargaining Power Weight Sliders -->
+        <section class="weights-card">
+          <div class="section-header-row">
+            <h2 class="section-title">Policy Bargaining Weights</h2>
+            <button id="btn-reset-weights" class="btn-link">Reset Default</button>
+          </div>
+          <p class="weights-helper">
+            Adjust governance weights ($w_C, w_O, w_M$) in the Nash Bargaining solver:
+          </p>
+
+          <div class="slider-row">
+            <div class="slider-label-line">
+              <span>Community Equity ($w_C$)</span>
+              <strong id="val-weight-community" class="mono">38%</strong>
+            </div>
+            <input type="range" id="slider-community" min="15" max="65" value="38" class="weight-slider comm-slider" />
+          </div>
+
+          <div class="slider-row">
+            <div class="slider-label-line">
+              <span>Operator Efficiency ($w_O$)</span>
+              <strong id="val-weight-operator" class="mono">30%</strong>
+            </div>
+            <input type="range" id="slider-operator" min="15" max="65" value="30" class="weight-slider oper-slider" />
+          </div>
+
+          <div class="slider-row">
+            <div class="slider-label-line">
+              <span>City Safety &amp; FAA ($w_M$)</span>
+              <strong id="val-weight-city" class="mono">32%</strong>
+            </div>
+            <input type="range" id="slider-city" min="15" max="65" value="32" class="weight-slider city-slider" />
+          </div>
+        </section>
+      </aside>
+
+      <!-- CENTER COLUMN: Interactive Boston Airspace Map + Cross-Section & Audit Drawer -->
+      <section class="center-stage">
+        <div class="map-container-wrapper">
+          <!-- Map Overlay Top Bar: Route Filter & Layer Toggles -->
+          <div class="map-overlay-top">
+            <div class="route-filter-bar" role="group" aria-label="Route Evolution Selector">
+              <button class="route-pill active" data-route-filter="all">All Rounds (1–4)</button>
+              <button class="route-pill pill-r1" data-route-filter="1">R1: Direct (Vetoed)</button>
+              <button class="route-pill pill-r2" data-route-filter="2">R2: City Regulatory</button>
+              <button class="route-pill pill-r3" data-route-filter="3">R3: Community EJ</button>
+              <button class="route-pill pill-r4" data-route-filter="4">R4: Consensus Path</button>
+            </div>
+
+            <div class="layer-toggles">
+              <label class="layer-toggle-chip">
+                <input type="checkbox" id="toggle-ej-zones" checked />
+                <span class="chip-swatch swatch-ej"></span> EJ &amp; Quiet Zones
+              </label>
+              <label class="layer-toggle-chip">
+                <input type="checkbox" id="toggle-restricted" checked />
+                <span class="chip-swatch swatch-restricted"></span> FAA Restricted
+              </label>
+              <label class="layer-toggle-chip">
+                <input type="checkbox" id="toggle-flyways" checked />
+                <span class="chip-swatch swatch-flyway"></span> Blue/Highway Flyways
+              </label>
+            </div>
+          </div>
+
+          <!-- Interactive Banner when Drop Quiet Zone mode is active -->
+          <div id="drop-zone-banner" class="drop-zone-banner hidden">
+            <span>📍 <strong>CITIZEN QUIET ZONE MODE:</strong> Click anywhere on the Boston map to place a dynamic community noise shield and trigger immediate multi-agent re-negotiation.</span>
+            <button id="btn-clear-custom-zones" class="btn-mini">Clear Custom Zones</button>
+            <button id="btn-cancel-drop-zone" class="btn-mini">Done</button>
+          </div>
+
+          <!-- Leaflet Map Element -->
+          <div id="boston-map" class="boston-map" aria-label="Interactive Boston eVTOL Airspace Map"></div>
+
+          <!-- Live eVTOL Flight Telemetry HUD Overlay -->
+          <div class="telemetry-hud">
+            <div class="hud-header">
+              <span class="hud-live-dot"></span>
+              <span id="hud-aircraft-name" class="hud-title mono">JOBY S4 LIVE TELEMETRY</span>
+              <span id="hud-route-tag" class="hud-tag">R4 CONSENSUS</span>
+            </div>
+            <div class="hud-metrics-grid">
+              <div class="hud-cell">
+                <span class="hud-label">ALTITUDE</span>
+                <strong id="hud-alt" class="hud-val mono">1,490 ft</strong>
+              </div>
+              <div class="hud-cell">
+                <span class="hud-label">AIRSPEED</span>
+                <strong id="hud-speed" class="hud-val mono">124 kt</strong>
+              </div>
+              <div class="hud-cell">
+                <span class="hud-label">GROUND NOISE</span>
+                <strong id="hud-noise" class="hud-val mono text-emerald">47.8 dBA</strong>
+              </div>
+              <div class="hud-cell wide">
+                <span class="hud-label">ACTIVE SECTOR / FLYWAY</span>
+                <strong id="hud-sector" class="hud-val mono">I-90 Mass Pike Acoustic Masking Corridor</strong>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Bottom Analytics Drawer: Acoustic Profile, EJ Audit Table, Impact Proof -->
+        <div class="analytics-drawer">
+          <div class="drawer-tabs-header">
+            <div class="drawer-tabs">
+              <button class="drawer-tab active" data-tab="profile">
+                📈 Acoustic &amp; Altitude Cross-Section
+              </button>
+              <button class="drawer-tab" data-tab="ledger">
+                🏘️ Boston Neighborhood EJ Audit Ledger
+              </button>
+              <button class="drawer-tab" data-tab="delta">
+                ⚖️ Baseline vs. Consensus Proof Delta
+              </button>
+            </div>
+            <div class="drawer-legend" id="profile-chart-legend">
+              <span class="legend-item"><i class="legend-line line-r1"></i> R1 Direct Ground dBA</span>
+              <span class="legend-item"><i class="legend-line line-r4"></i> R4 Consensus Ground dBA</span>
+              <span class="legend-item"><i class="legend-line line-alt"></i> R4 Altitude (ft MSL)</span>
+            </div>
+          </div>
+
+          <!-- TAB 1: SVG Cross-Section Profile -->
+          <div id="tab-content-profile" class="drawer-tab-body active">
+            <div id="acoustic-profile-chart" class="profile-chart-container"></div>
+          </div>
+
+          <!-- TAB 2: Neighborhood EJ Audit Table -->
+          <div id="tab-content-ledger" class="drawer-tab-body">
+            <div class="table-scroll">
+              <table class="audit-table">
+                <thead>
+                  <tr>
+                    <th>Boston Neighborhood / Tract</th>
+                    <th>Classification</th>
+                    <th>Pop.</th>
+                    <th>Noise Cap</th>
+                    <th>R1 Direct Peak</th>
+                    <th>R4 Consensus Peak</th>
+                    <th>Acoustic Delta</th>
+                    <th>Audit Status</th>
+                  </tr>
+                </thead>
+                <tbody id="neighborhood-ledger-tbody"></tbody>
+              </table>
+            </div>
+          </div>
+
+          <!-- TAB 3: Baseline vs Consensus Impact Summary Cards -->
+          <div id="tab-content-delta" class="drawer-tab-body">
+            <div id="impact-delta-grid" class="impact-delta-grid"></div>
+          </div>
+        </div>
+      </section>
+
+      <!-- RIGHT COLUMN: Transparent Multi-Agent Negotiation Protocol Transcript -->
+      <aside class="panel right-panel">
+        <div class="protocol-header">
+          <div>
+            <span class="section-eyebrow">TRANSPARENT NEGOTIATION LOG</span>
+            <h2 class="section-title">Multi-Agent Protocol Feed</h2>
+          </div>
+          <span id="protocol-corridor-code" class="corridor-code-badge mono">BOS → LMA</span>
+        </div>
+
+        <!-- 5-Round Interactive Stepper -->
+        <div class="round-stepper" id="round-stepper">
+          <button class="step-btn active" data-step="1" title="Round 1: Baseline Proposal & Audit">
+            <span class="step-num">R1</span>
+            <span class="step-name">Audit</span>
+          </button>
+          <button class="step-btn active" data-step="2" title="Round 2: FAA & City Safety Gates">
+            <span class="step-num">R2</span>
+            <span class="step-name">Safety</span>
+          </button>
+          <button class="step-btn active" data-step="3" title="Round 3: Community EJ Flyway">
+            <span class="step-num">R3</span>
+            <span class="step-name">Equity</span>
+          </button>
+          <button class="step-btn active" data-step="4" title="Round 4: Pareto-Nash Equilibrium">
+            <span class="step-num">R4</span>
+            <span class="step-name">Nash</span>
+          </button>
+          <button class="step-btn active" data-step="5" title="Round 5: Cryptographic Attestation">
+            <span class="step-num">R5</span>
+            <span class="step-name">Proof</span>
+          </button>
+        </div>
+
+        <!-- Scrollable Protocol Messages Stream -->
+        <div id="protocol-stream" class="protocol-stream"></div>
+
+        <!-- Bottom Cryptographic Consensus Attestation Footer -->
+        <div class="crypto-footer">
+          <div class="crypto-footer-row">
+            <span class="crypto-label">CERT ID:</span>
+            <strong id="cert-id-display" class="mono text-emerald">BOS-AAM-164852D75D99</strong>
+          </div>
+          <div class="crypto-footer-row">
+            <span class="crypto-label">SHA-256:</span>
+            <code id="cert-hash-display" class="crypto-hash mono">0x164852d75d99fa0bbbfecea2d05ea8b2...</code>
+          </div>
+          <button id="btn-open-cert-footer" class="btn btn-cert-full">
+            Verify &amp; Export Auditable Consensus Record →
+          </button>
+        </div>
+      </aside>
+    </main>
+  </div>
+
+  <!-- MODAL: Auditable Consensus Proof Certificate -->
+  <div id="proof-modal-backdrop" class="modal-backdrop hidden" role="dialog" aria-modal="true" aria-labelledby="modal-title">
+    <div class="modal-card">
+      <div class="modal-header">
+        <div>
+          <span class="section-eyebrow">CRYPTOGRAPHIC AIRSPACE CLEARANCE LEDGER</span>
+          <h2 id="modal-title" class="modal-title">Auditable Consensus Record — Proof of Fairness</h2>
+        </div>
+        <div class="modal-actions">
+          <button id="btn-download-json" class="btn btn-primary">⬇ Download Signed JSON</button>
+          <button id="btn-close-modal" class="btn btn-secondary">✕ Close</button>
+        </div>
+      </div>
+
+      <div class="modal-body">
+        <div id="modal-proof-summary" class="modal-proof-summary"></div>
+        <h3 class="modal-subtitle">Signed Protocol Payload (SHA-256 Verifiable)</h3>
+        <pre id="modal-json-viewer" class="modal-json-viewer mono"></pre>
+      </div>
+    </div>
+  </div>
+
+  <script
+    src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
+    integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo="
+    crossorigin=""
+  ></script>
+  <script src="/app.js"></script>
+</body>
+</html>
