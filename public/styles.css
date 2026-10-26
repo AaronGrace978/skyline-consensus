@@ -65,9 +65,11 @@ body {
 /* TOP MISSION CONTROL BAR */
 .topbar {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
   justify-content: space-between;
-  gap: 14px;
+  column-gap: 14px;
+  row-gap: 8px;
   padding: 10px 16px;
   background: linear-gradient(180deg, #0f172a 0%, #0b1120 100%);
   border-bottom: 1px solid var(--border-subtle);
@@ -76,10 +78,16 @@ body {
 }
 
 .brand-cluster {
+  order: 1;
   display: flex;
   align-items: center;
   gap: 11px;
-  min-width: 285px;
+  flex: 1 1 360px;
+  min-width: 0;
+}
+
+.brand-cluster > div:last-child {
+  min-width: 0;
 }
 
 .brand-logo {
@@ -122,6 +130,9 @@ body {
   font-size: 11.5px;
   color: var(--text-muted);
   margin-top: 1px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .brand-tagline strong {
@@ -129,16 +140,22 @@ body {
 }
 
 .mission-controls {
+  order: 3;
+  flex: 1 1 100%;
   display: flex;
   align-items: center;
-  gap: 8px;
-  flex-wrap: nowrap;
+  column-gap: 14px;
+  row-gap: 6px;
+  flex-wrap: wrap;
+  padding-top: 8px;
+  border-top: 1px solid var(--border-subtle);
 }
 
 .control-group {
   display: flex;
-  flex-direction: column;
-  gap: 3px;
+  flex-direction: row;
+  align-items: center;
+  gap: 6px;
 }
 
 .control-group label {
@@ -169,10 +186,18 @@ body {
 }
 
 .action-buttons {
+  order: 2;
   display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
   align-items: center;
   gap: 7px;
-  flex-shrink: 0;
+}
+
+@media (max-width: 1180px) {
+  .challenge-badge {
+    display: none;
+  }
 }
 
 .btn {
@@ -784,11 +809,12 @@ body {
 }
 
 .swatch-ej {
-  background: #f43f5e;
+  background: #f59e0b;
 }
 
 .swatch-restricted {
-  background: #eab308;
+  background: transparent;
+  border: 1.5px dashed #e2e8f0;
 }
 
 .swatch-flyway {
@@ -822,6 +848,130 @@ body {
   font-size: 11px;
   font-weight: 600;
   cursor: pointer;
+}
+
+/* MAP LEGEND */
+.map-legend {
+  position: absolute;
+  right: 52px;
+  bottom: 26px;
+  z-index: 10;
+  width: 214px;
+  background: rgba(11, 17, 32, 0.92);
+  backdrop-filter: blur(8px);
+  border: 1px solid var(--border-subtle);
+  border-radius: 9px;
+  padding: 8px 10px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.45);
+}
+
+.map-legend-title {
+  font-size: 9.5px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  cursor: pointer;
+  list-style: none;
+  user-select: none;
+}
+
+.map-legend-title::-webkit-details-marker {
+  display: none;
+}
+
+.map-legend-title::after {
+  content: '▾';
+  float: right;
+}
+
+.map-legend:not([open]) .map-legend-title::after {
+  content: '▸';
+}
+
+.map-legend[open] .map-legend-title {
+  margin-bottom: 5px;
+}
+
+@media (max-width: 1600px), (max-height: 900px) {
+  .map-legend {
+    top: 90px;
+    bottom: auto;
+    right: 10px;
+    width: 196px;
+    padding: 6px 8px;
+  }
+
+  .map-legend-row {
+    font-size: 9.5px;
+    gap: 6px;
+    padding: 1px 0;
+  }
+}
+
+.map-legend-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 10.5px;
+  color: var(--text-secondary);
+  line-height: 1.25;
+  padding: 2px 0;
+}
+
+.lg-swatch {
+  width: 16px;
+  height: 11px;
+  border-radius: 2px;
+  flex-shrink: 0;
+}
+
+.lg-quiet {
+  background: rgba(245, 158, 11, 0.3);
+  border: 1.5px solid #f59e0b;
+}
+
+.lg-quiet-dashed {
+  background: rgba(245, 158, 11, 0.16);
+  border: 1.5px dashed #f59e0b;
+}
+
+.lg-faa {
+  background: rgba(226, 232, 240, 0.06);
+  border: 1.5px dashed #e2e8f0;
+}
+
+.lg-line {
+  width: 16px;
+  height: 0;
+  flex-shrink: 0;
+}
+
+.lg-r4 {
+  border-top: 3.5px solid #10b981;
+}
+
+.lg-r1 {
+  border-top: 2.5px dashed #ef4444;
+}
+
+.lg-r23 {
+  border-top: 2.5px dashed #f59e0b;
+  box-shadow: 0 4px 0 -1px #a855f7;
+}
+
+.lg-flyway {
+  height: 7px;
+  border-radius: 4px;
+  background: rgba(6, 182, 212, 0.35);
+}
+
+.lg-vertiport {
+  width: 16px;
+  flex-shrink: 0;
+  text-align: center;
+  font-size: 11px;
+  color: #38bdf8;
 }
 
 /* LIVE TELEMETRY HUD ON MAP */
@@ -1050,9 +1200,9 @@ body {
   font-weight: 700;
   padding: 1px 5px;
   border-radius: 4px;
-  background: rgba(244, 63, 94, 0.16);
-  color: #fb7185;
-  border: 1px solid rgba(244, 63, 94, 0.35);
+  background: rgba(245, 158, 11, 0.16);
+  color: #fbbf24;
+  border: 1px solid rgba(245, 158, 11, 0.38);
 }
 
 .std-tag {

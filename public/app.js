@@ -11,6 +11,9 @@
  */
 
 (function () {
+  const QUIET_ZONE_AMBER = '#f59e0b';
+  const FAA_ZONE_OUTLINE = '#e2e8f0';
+
   const state = {
     airspace: null,
     simulation: null,
@@ -21,7 +24,7 @@
     weather: 'clear',
     weights: { community: 0.38, operator: 0.30, city: 0.32 },
     customZones: [],
-    activeRound: 5, // 1..5
+    activeRound: 1, // 1..5
     routeFilter: 'all', // 'all' | '1' | '2' | '3' | '4'
     dropZoneMode: false,
     liveTimer: null,
@@ -99,7 +102,7 @@
         noiseCapDba: 52.5,
         minSafeAltitudeFt: 1480
       });
-      await runSimulation({ fitBounds: false });
+      await runSimulation({ fitBounds: false, showRound: Math.max(state.activeRound, 4) });
     });
   }
 
@@ -160,16 +163,16 @@
     // 2. Boston Environmental Justice & Sensitive Quiet Zones
     for (const zone of state.airspace.sensitiveZones) {
       const poly = L.polygon(zone.polygon, {
-        color: zone.color || '#f43f5e',
+        color: QUIET_ZONE_AMBER,
         weight: 1.5,
-        fillColor: zone.color || '#f43f5e',
+        fillColor: QUIET_ZONE_AMBER,
         fillOpacity: zone.isEnvironmentalJustice ? 0.16 : 0.10,
         dashArray: zone.isEnvironmentalJustice ? null : '4, 4'
       });
 
       poly.bindPopup(`
         <div style="min-width:210px">
-          <div style="font-size:10px;color:#fb7185;font-weight:700;text-transform:uppercase">
+          <div style="font-size:10px;color:#fbbf24;font-weight:700;text-transform:uppercase">
             ${zone.isEnvironmentalJustice ? '★ Environmental Justice Priority Tract' : 'Residential Quiet Zone'}
           </div>
           <div style="font-size:13px;font-weight:700;margin:2px 0 5px">${zone.name}</div>
@@ -186,16 +189,16 @@
     // 3. FAA Class B & High-Rise Restricted Airspace Zones
     for (const rZone of state.airspace.restrictedZones) {
       const poly = L.polygon(rZone.polygon, {
-        color: rZone.color || '#eab308',
-        weight: 2,
-        fillColor: rZone.color || '#eab308',
-        fillOpacity: 0.2,
+        color: FAA_ZONE_OUTLINE,
+        weight: 1.6,
+        fillColor: FAA_ZONE_OUTLINE,
+        fillOpacity: 0.06,
         dashArray: '6, 5'
       });
 
       poly.bindPopup(`
         <div style="min-width:210px">
-          <div style="font-size:10px;color:#fbbf24;font-weight:700;text-transform:uppercase">
+          <div style="font-size:10px;color:#e2e8f0;font-weight:700;text-transform:uppercase">
             ⚠️ ${rZone.authority}
           </div>
           <div style="font-size:13px;font-weight:700;margin:2px 0 5px">${rZone.name}</div>
@@ -229,7 +232,13 @@
     });
 
     state.simulation = await res.json();
-    state.activeRound = 5;
+    if (options.showRound) {
+      state.activeRound = options.showRound;
+    } else if (options.resetRound) {
+      state.activeRound = 1;
+      state.routeFilter = 'all';
+      updateRouteFilterButtons();
+    }
     state.aircraftSampleIdx = 0;
 
     renderFullState({ fitBounds: options.fitBounds });
@@ -296,9 +305,9 @@
     for (const cz of state.customZones) {
       const circle = L.circle([cz.lat, cz.lng], {
         radius: cz.radiusMeters || 580,
-        color: '#ec4899',
+        color: QUIET_ZONE_AMBER,
         weight: 2,
-        fillColor: '#ec4899',
+        fillColor: QUIET_ZONE_AMBER,
         fillOpacity: 0.25,
         dashArray: '4, 4'
       });
@@ -500,7 +509,26 @@
     // Update HUD title
     document.getElementById('hud-aircraft-name').textContent =
       sim.mission.aircraftModel.toUpperCase();
-    document.getElementById('hud-route-tag').textContent = activeRoute.shortLabel.toUpperCase();
+    syncHudRouteTag();
+  }
+
+  function getHudRouteIdx() {
+    return state.routeFilter !== 'all'
+      ? Number(state.routeFilter) - 1
+      : Math.min(3, Math.max(0, state.activeRound - 1));
+  }
+
+  function syncHudRouteTag() {
+    const route = state.simulation.routes[getHudRouteIdx()] || state.simulation.routes[3];
+    const tag = document.getElementById('hud-route-tag');
+    const routeKey = `${route.roundNumber}:${route.shortLabel}`;
+    if (tag.dataset.routeKey !== routeKey) {
+      state.aircraftSampleIdx = 0;
+      tag.dataset.routeKey = routeKey;
+    }
+    tag.textContent = route.shortLabel.toUpperCase();
+    tag.style.color = route.color;
+    tag.style.background = `${route.color}33`;
   }
 
   /**
@@ -652,8 +680,8 @@
           .join('')}
 
         <!-- EJ Acoustic Cap Reference Line -->
-        <line x1="${pad.left}" y1="${capY}" x2="${width - pad.right}" y2="${capY}" stroke="#f43f5e" stroke-width="1.2" stroke-dasharray="4,4" />
-        <text x="${pad.left + 6}" y="${Number(capY) - 4}" fill="#fb7185" font-size="9.5" font-family="JetBrains Mono">EJ Cap (${capDba} dBA)</text>
+        <line x1="${pad.left}" y1="${capY}" x2="${width - pad.right}" y2="${capY}" stroke="#f59e0b" stroke-width="1.2" stroke-dasharray="4,4" />
+        <text x="${pad.left + 6}" y="${Number(capY) - 4}" fill="#fbbf24" font-size="9.5" font-family="JetBrains Mono">EJ Cap (${capDba} dBA)</text>
 
         <!-- Area under R4 Consensus Noise Curve -->
         <path d="${r4DbaPath} L${width - pad.right},${pad.top + plotH} L${pad.left},${pad.top + plotH} Z" fill="url(#emeraldGrad)" />
@@ -782,33 +810,34 @@
       zIndexOffset: 1000
     }).addTo(map);
 
-    setInterval(() => {
-      if (!state.simulation) return;
-      const routeIdx =
-        state.routeFilter !== 'all'
-          ? Number(state.routeFilter) - 1
-          : Math.min(3, Math.max(0, state.activeRound - 1));
-      const activeRoute = state.simulation.routes[routeIdx] || state.simulation.routes[3];
-      const samples = activeRoute.evaluation.profileSamples;
-      if (!samples || samples.length === 0) return;
+    setInterval(advanceAircraft, 180);
+  }
 
+  function advanceAircraft(options = {}) {
+    if (!state.simulation) return;
+    const activeRoute =
+      state.simulation.routes[getHudRouteIdx()] || state.simulation.routes[3];
+    const samples = activeRoute.evaluation.profileSamples;
+    if (!samples || samples.length === 0) return;
+
+    if (!options.holdPosition) {
       state.aircraftSampleIdx = (state.aircraftSampleIdx + 1) % samples.length;
-      const sample = samples[state.aircraftSampleIdx];
+    }
+    const sample = samples[Math.min(state.aircraftSampleIdx, samples.length - 1)];
 
-      mapLayers.aircraftMarker.setLatLng([sample.lat, sample.lng]);
+    mapLayers.aircraftMarker.setLatLng([sample.lat, sample.lng]);
 
-      // Update live telemetry HUD
-      document.getElementById('hud-alt').textContent = `${sample.altFt.toLocaleString()} ft`;
-      document.getElementById('hud-speed').textContent = `${sample.speedKt} kt`;
-      const noiseEl = document.getElementById('hud-noise');
-      noiseEl.textContent = `${sample.groundDba} dBA`;
-      noiseEl.className =
-        sample.groundDba > sample.localThresholdDba
-          ? 'hud-val mono'
-          : 'hud-val mono text-emerald';
-      noiseEl.style.color = sample.groundDba > sample.localThresholdDba ? '#f87171' : '';
-      document.getElementById('hud-sector').textContent = sample.zoneLabel;
-    }, 180);
+    // Update live telemetry HUD
+    document.getElementById('hud-alt').textContent = `${sample.altFt.toLocaleString()} ft`;
+    document.getElementById('hud-speed').textContent = `${sample.speedKt} kt`;
+    const noiseEl = document.getElementById('hud-noise');
+    noiseEl.textContent = `${sample.groundDba} dBA`;
+    noiseEl.className =
+      sample.groundDba > sample.localThresholdDba
+        ? 'hud-val mono'
+        : 'hud-val mono text-emerald';
+    noiseEl.style.color = sample.groundDba > sample.localThresholdDba ? '#f87171' : '';
+    document.getElementById('hud-sector').textContent = sample.zoneLabel;
   }
 
   /**
@@ -910,7 +939,7 @@
           syncWeightSlidersUI();
         }
       }
-      await runSimulation({ fitBounds: true });
+      await runSimulation({ fitBounds: true, resetRound: true });
     });
 
     // Origin / Destination / Time / Weather selectors
@@ -922,7 +951,7 @@
       }
       state.scenarioId = 'custom';
       document.getElementById('scenario-select').value = 'custom';
-      await runSimulation({ fitBounds: true });
+      await runSimulation({ fitBounds: true, resetRound: true });
     });
 
     document.getElementById('dest-select').addEventListener('change', async (e) => {
@@ -933,7 +962,7 @@
       }
       state.scenarioId = 'custom';
       document.getElementById('scenario-select').value = 'custom';
-      await runSimulation({ fitBounds: true });
+      await runSimulation({ fitBounds: true, resetRound: true });
     });
 
     document.getElementById('time-select').addEventListener('change', async (e) => {
@@ -1001,6 +1030,8 @@
         state.routeFilter = btn.dataset.routeFilter;
         updateRouteFilterButtons();
         renderRoutesOnMap(false);
+        syncHudRouteTag();
+        advanceAircraft({ holdPosition: true });
       });
     });
 
