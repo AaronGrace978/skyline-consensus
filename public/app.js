@@ -63,12 +63,18 @@
 
     L.control.zoom({ position: 'bottomright' }).addTo(map);
 
-    // Dark-mode CartoDB basemap tiles
-    L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
-      attribution: '&copy; OpenStreetMap &copy; CARTO | Skyline Consensus Boston AAM Testbed',
-      subdomains: 'abcd',
-      maxZoom: 18
-    }).addTo(map);
+    // Carto's raster CDN (basemaps.cartocdn.com/dark_all and /rastertiles/dark_all)
+    // has required an API key since 25 Sep 2026. Anonymous requests return a
+    // blank "API KEY REQUIRED" tile, so they cannot be the street basemap.
+    // Esri World Dark Gray is keyless, dark, and draws the Boston street grid.
+    L.tileLayer(
+      'https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Dark_Gray_Base/MapServer/tile/{z}/{y}/{x}',
+      {
+        attribution:
+          'Tiles &copy; Esri &mdash; Esri, DeLorme, NAVTEQ | &copy; OpenStreetMap contributors',
+        maxZoom: 16
+      }
+    ).addTo(map);
 
     mapLayers.flyways = L.layerGroup().addTo(map);
     mapLayers.ejZones = L.layerGroup().addTo(map);
